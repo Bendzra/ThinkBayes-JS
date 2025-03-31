@@ -328,6 +328,84 @@
 
 		renderPlot(title, plotData, "hist2_chart_", {x:{title:"traps triggered"},y:{title:"Probability"}});
 
+
+		/// Simulation
+
+		class DaysSimul extends Pmf
+		{
+			cdf    = null;
+			hists  = null;
+			pmfs   = null;
+			nTraps = 0;
+
+			constructor(pmf, name="")
+			{
+				super(pmf, name);
+				this.cdf = pmf.MakeCdf(name);
+				this.nTraps = this.cdf.Values().length;
+				this.hists = [];
+				this.pmfs = [];
+			};
+
+			InitHist(i)
+			{
+				this.hists[i] = new Hist(null, name);
+				this.cdf.Values().forEach( (v) => this.hists[i].Set(v, 0), this );
+			};
+
+			Experiment(nTrials=1000, days=1)
+			{
+				for(var i = 0; i < days; i++) this.InitHist(i);
+				for(var i = 0; i < nTrials; i++) this.Trial(days);
+				for(var i = 0; i < days; i++)
+				{
+					this.pmfs[i] = new Pmf(this.hists[i], `simulation (day = ${i+1}, trials = ${nTrials})`);
+					this.pmfs[i].Normalize();
+				}
+			};
+
+			Trial(days)
+			{
+				var traps = new Array(this.nTraps);
+
+				for(var day = 0; day < days; day++)
+				{
+					var indices = Array.from({length: this.nTraps}, (_, k) => k);
+					var stopIndex = this.nTraps;
+
+					var p = Math.random();
+					var nInsects = this.cdf.Value(p);
+
+					// случайно рассаживаем насекомых на ловушки:
+					for(var i = 0; i < nInsects; i++)
+					{
+						let randIndex = Math.floor(Math.random() * stopIndex);
+						traps[ indices[randIndex] ] = 1;
+						stopIndex--;
+						[indices[stopIndex], indices[randIndex]] = [indices[randIndex], indices[stopIndex]];
+					}
+
+					var trapped = traps.reduce((partialSum, a) => partialSum + a, 0);
+					this.hists[day].Incr(trapped);
+				}
+			};
+		}
+
+		const nTrials = 50*1000;
+		var simul = new DaysSimul(mix1, "simul");
+		simul.Experiment(nTrials, days);
+
+		/// --- plotting --- ///
+
+		var plotData = [];
+
+		for(var i = 0; i < days; i++)
+		{
+			logSummary(title, simul.pmfs[i], "simul_summary_", '#0c7473');
+			chargePlot(simul.pmfs[i], plotData, "line");
+		}
+		renderPlot(title, plotData, "simul_chart_", {x:{title:"traps triggered"},y:{title:"Probability"}});
+
 	})();
 
 })();

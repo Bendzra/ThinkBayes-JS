@@ -13,7 +13,8 @@ function createDiv(prefix, titleSlug, className="info")
 	return oDiv;
 }
 
-function slugify(text) {
+function slugify(text)
+{
 	return text
 		.toString()                     // Cast to string
 		.toLowerCase()                  // Convert the string to lowercase letters

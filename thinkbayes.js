@@ -378,7 +378,7 @@ function Cdf(xs=null, ps=null, name="")
 
 	init(this, xs, ps, name);
 
-	this.Values = function() { return xs; };
+	this.Values = function() { return this.xs; };
 
 	this.Items = function()
 	{

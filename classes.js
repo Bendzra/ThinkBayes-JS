@@ -12,7 +12,7 @@ class Suite extends Pmf
 
 		if (hypos && hypos.constructor === Array && hypos.length) this.Normalize();
 
-		this.title = (typeof title !== 'string') ? guid() : title;
+		this.title = (!title || typeof title !== 'string') ? guid() : title;
 		this.titleSlug = slugify(this.title);
 		this.CreateDiv();
 	};
@@ -83,7 +83,7 @@ class Pdf
 
 class GaussianPdf extends Pdf
 {
-    // Represents the PDF of a Gaussian distribution
+	// Represents the PDF of a Gaussian distribution
 
 	mu = 0;
 	sigma = 1;
@@ -221,7 +221,7 @@ class GaussianKde
 
 class EstimatedPdf extends Pdf
 {
-    // Represents a PDF estimated by KDE
+	// Represents a PDF estimated by KDE
 
 	kde = null;
 
@@ -235,4 +235,75 @@ class EstimatedPdf extends Pdf
 	{
 		return this.kde.evaluate(x);
 	}
+}
+
+
+///////////////////////////////////////////////////////////////////////////////
+
+const JointMixin = (BasePmf) => class extends BasePmf
+{
+
+	// Represents a joint distribution.
+	// The values are sequences (usually tuples)
+
+	Marginal(i, name='')
+	{
+		// Gets the marginal distribution of the indicated variable.
+		//    i: index of the variable we want
+		//    Returns: Pmf
+
+		var pmf = new Pmf(null, name);
+		for( const [vs, prob] of this.Items() ) { pmf.Incr(vs[i], prob); }
+		return pmf;
+	};
+
+	Conditional(i, j, val, name='')
+	{
+		// Gets the conditional distribution of the indicated variable.
+
+		// Distribution of vs[i], conditioned on vs[j] = val.
+
+		//   i: index of the variable we want
+		//   j: which variable is conditioned on
+		// val: the value the jth variable has to have
+
+		// Returns: Pmf
+
+		var pmf = new Pmf(null, name);
+		for(const [vs, prob] of this.Items())
+		{
+			if (vs[j] != val) continue;
+			pmf.Incr(vs[i], prob);
+		}
+		pmf.Normalize();
+		return pmf;
+	};
+
+	MaxLikeInterval(percentage=90)
+	{
+		// """Returns the maximum-likelihood credible interval.
+
+		// If percentage=90, computes a 90% CI containing the values
+		// with the highest likelihoods.
+
+		// percentage: float between 0 and 100
+
+		// Returns: list of values from the suite
+
+		var interval = [];
+		var total = 0;
+
+		var t = [...this.Items()].toSorted( ([val1, prob1], [val2, prob2]) => prob2 - prob1 );
+
+		for(var i = 0; i < t.length; i++)
+		{
+			const [val, prob] = t[i];
+			interval.push(val);
+			total += prob;
+			if (total >= percentage / 100) break;
+		}
+
+		return interval;
+	};
+
 }
